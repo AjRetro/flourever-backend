@@ -36,6 +36,13 @@ app.use(cors({
 
 app.use(express.json());
 
+// --- DEBUG LOGGER ---
+// This will verify if the request is actually hitting your server
+app.use((req, res, next) => {
+    console.log(`📡 Incoming ${req.method} request to ${req.url} from origin ${req.headers.origin}`);
+    next();
+});
+
 // --- DATABASE CONNECTION ---
 const pool = mysql.createPool({
     host: process.env.DB_HOST,
