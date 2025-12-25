@@ -43,7 +43,10 @@ const pool = mysql.createPool({
     password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME,
     port: process.env.DB_PORT,
-    ssl: { rejectUnauthorized: true },
+    // --- SSL FIX ---
+    // We changed rejectUnauthorized to FALSE.
+    // This fixes "Error: self-signed certificate in certificate chain"
+    ssl: { rejectUnauthorized: false }, 
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0
