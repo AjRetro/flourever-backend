@@ -15,6 +15,9 @@ export const AdminAuthProvider = ({ children }) => {
   const [adminToken, setAdminToken] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Define the Base URL once so we don't make mistakes
+  const BASE_URL = 'https://flourever-backend.onrender.com'; 
+
   useEffect(() => {
     const token = localStorage.getItem('adminToken');
     if (token) {
@@ -26,7 +29,8 @@ export const AdminAuthProvider = ({ children }) => {
 
   const login = async (username, password) => {
     try {
-      const response = await fetch('http://localhost:8080/api/admin/login', {
+      // ✅ Corrected: Uses the Render URL
+      const response = await fetch(`${BASE_URL}/api/admin/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -57,7 +61,8 @@ export const AdminAuthProvider = ({ children }) => {
 
   // Helper function to make authenticated API calls
   const authFetch = async (url, options = {}) => {
-    const response = await fetch(`http://localhost:8080${url}`, {
+    // ✅ Corrected: Replaced localhost with BASE_URL
+    const response = await fetch(`${BASE_URL}${url}`, {
       ...options,
       headers: {
         'Content-Type': 'application/json',
@@ -74,7 +79,7 @@ export const AdminAuthProvider = ({ children }) => {
     isLoading,
     login,
     logout,
-    authFetch, // Add this helper function
+    authFetch, 
   };
 
   return (
