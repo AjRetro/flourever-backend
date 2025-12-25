@@ -4,60 +4,52 @@ const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const nodemailer = require('nodemailer');
-require('dotenv').config(); // Load environment variables
+require('dotenv').config(); 
 
 // --- SERVER CONFIG ---
-// Render will provide a PORT automatically.
 const PORT = process.env.PORT || 8080;
 const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-key-12345';
 
 const app = express();
 
-// --- 1. THE CORS FIX ---
-// Replace your existing "app.use(cors())" with this block.
-// This tells your backend: "It's okay if requests come from these specific websites."
-const allowedOrigins = [
-  'http://localhost:3000',                  // For when you are testing on your laptop
-  'http://localhost:5173',                  // Common Vite local port
-  'https://flourever-frontend.vercel.app',  // YOUR Vercel Frontend (Production)
-  // Add 'www.' version if you use it:
-  'https://www.flourever-frontend.vercel.app' 
-];
-
+// --- 1. THE FLEXIBLE CORS FIX (UPDATED) ---
+// This replaces the old list. It allows ANY Vercel subdomain automatically.
 app.use(cors({
   origin: function (origin, callback) {
-    // allow requests with no origin (like mobile apps or curl requests)
+    // 1. Allow requests with no origin (like mobile apps or Postman)
     if (!origin) return callback(null, true);
-    
-    if (allowedOrigins.indexOf(origin) === -1) {
-      const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
-      return callback(new Error(msg), false);
-    }
-    return callback(null, true);
+
+    // 2. Allow Localhost (for your testing)
+    if (origin.startsWith('http://localhost')) return callback(null, true);
+
+    // 3. Allow ANY Vercel deployment (Production OR Preview URLs)
+    // This allows flourever-frontend.vercel.app AND flourever-frontend-alpha.vercel.app
+    if (origin.endsWith('.vercel.app')) return callback(null, true);
+
+    // 4. Log blocked origins so you can see them in Render logs (This is the missing part!)
+    console.log("🚫 BLOCKED ORIGIN:", origin);
+    const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
+    return callback(new Error(msg), false);
   },
-  credentials: true // Important if you are using cookies/sessions
+  credentials: true 
 }));
 
 app.use(express.json());
 
-// --- DATABASE CONNECTION (Cloud Ready) ---
-// This uses the variables you will set in Render
+// --- DATABASE CONNECTION ---
 const pool = mysql.createPool({
     host: process.env.DB_HOST,
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME,
     port: process.env.DB_PORT,
-    ssl: {
-        rejectUnauthorized: true // Required for Aiven
-    },
+    ssl: { rejectUnauthorized: true },
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0
 });
 
-// --- 2. DATABASE CONNECTION DEBUGGING ---
-// Check connection immediately on startup
+// --- DEBUG CONNECTION ON STARTUP ---
 pool.getConnection()
     .then(connection => {
         console.log(`✅ Database Connected Successfully to host: ${process.env.DB_HOST}`);
@@ -69,7 +61,6 @@ pool.getConnection()
     });
 
 // --- ADMIN CREDENTIALS ---
-// You can also move these to env variables if you want extra security
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME || "flourever_admin";
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "BakeryMaster2024!"; 
 
@@ -123,7 +114,6 @@ app.post('/api/signup', async (req, res) => {
         const hashedPassword = await bcrypt.hash(password, salt);
         const verificationCode = generateCode();
 
-        // Try Sending Email First
         try {
             await transporter.sendMail({
                 from: '"FlourEver Bakery" <janarickaj@gmail.com>',
@@ -136,7 +126,6 @@ app.post('/api/signup', async (req, res) => {
             return res.status(500).json({ error: "Failed to send email. Please check the address." });
         }
 
-        // Insert User
         await pool.query(
             'INSERT INTO users (email, password, firstName, lastName, gender, birthday, verification_code, isAdmin) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
             [email, hashedPassword, firstName, lastName, gender, birthday, verificationCode, false]
