@@ -4,7 +4,7 @@ import axios from 'axios';
 // Instead of typing "http://localhost:8080" in every file,
 // we can just import this `api` client.
 const api = axios.create({
-  baseURL: 'http://localhost:8080/api'
+  baseURL: 'https://flourever-api.onrender.com/api'
 });
 
 // This is an "interceptor" - a bit advanced, but great for your grade.
