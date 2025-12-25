@@ -4,6 +4,7 @@ const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const nodemailer = require('nodemailer');
+require('dotenv').config(); // Load environment variables
 
 // --- SERVER CONFIG ---
 // Render will provide a PORT automatically.
@@ -11,7 +12,32 @@ const PORT = process.env.PORT || 8080;
 const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-key-12345';
 
 const app = express();
-app.use(cors());
+
+// --- 1. THE CORS FIX ---
+// Replace your existing "app.use(cors())" with this block.
+// This tells your backend: "It's okay if requests come from these specific websites."
+const allowedOrigins = [
+  'http://localhost:3000',                  // For when you are testing on your laptop
+  'http://localhost:5173',                  // Common Vite local port
+  'https://flourever-frontend.vercel.app',  // YOUR Vercel Frontend (Production)
+  // Add 'www.' version if you use it:
+  'https://www.flourever-frontend.vercel.app' 
+];
+
+app.use(cors({
+  origin: function (origin, callback) {
+    // allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.indexOf(origin) === -1) {
+      const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
+      return callback(new Error(msg), false);
+    }
+    return callback(null, true);
+  },
+  credentials: true // Important if you are using cookies/sessions
+}));
+
 app.use(express.json());
 
 // --- DATABASE CONNECTION (Cloud Ready) ---
@@ -29,6 +55,18 @@ const pool = mysql.createPool({
     connectionLimit: 10,
     queueLimit: 0
 });
+
+// --- 2. DATABASE CONNECTION DEBUGGING ---
+// Check connection immediately on startup
+pool.getConnection()
+    .then(connection => {
+        console.log(`✅ Database Connected Successfully to host: ${process.env.DB_HOST}`);
+        connection.release();
+    })
+    .catch(err => {
+        console.error("❌ Database Connection FAILED");
+        console.error("Error Message:", err.message);
+    });
 
 // --- ADMIN CREDENTIALS ---
 // You can also move these to env variables if you want extra security
