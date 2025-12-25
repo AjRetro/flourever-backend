@@ -1,0 +1,110 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* =========================================
+   CUSTOM FONT DEFINITIONS
+   =========================================
+   - Make sure your font files are inside: src/fonts/
+   - If you change a filename, update the url('./fonts/...') line.
+*/
+
+/* 1. PRIMARY BODY FONT (Used for paragraphs, buttons, inputs) */
+@font-face {
+  font-family: 'ComfyCozies'; 
+  /* CHANGE THIS URL if you rename your paragraph font file */
+  src: url('./fonts/KGPerfectPenmanship.otf') format('opentype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+/* 2. PRIMARY HEADING FONT (Used for big titles like h1, h2) */
+@font-face {
+  font-family: 'CakeNom';
+  /* CHANGE THIS URL if you rename your heading font file */
+  src: url('./fonts/Poppin-Regular.otf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+/* 3. SPECIAL ACCENT FONT (Used for unique words, prices, rotating text) */
+@font-face {
+  font-family: 'CCakep';
+  /* CHANGE THIS URL if you rename your special/unique font file */
+  src: url('./fonts/cCakep.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+/* =========================================
+   GLOBAL STYLES
+   ========================================= */
+
+html, body {
+  max-width: 100%;
+  overflow-x: hidden;
+  position: relative;
+}
+
+body {
+  margin: 0;
+  /* DEFAULT FONT STACK:
+     'ComfyCozies' is listed first, so it applies to everything by default.
+     'Inter' is the fallback if ComfyCozies fails to load.
+  */
+  font-family: 'ComfyCozies', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  
+  /* Background color to match your theme */
+  background-color: #ffe4b5; 
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+}
+
+/* =========================================
+   SCROLLBAR STYLES
+   ========================================= */
+
+/* Main Page Scrollbar (matches brand theme) */
+::-webkit-scrollbar {
+  width: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: #ffe4b5; /* brand-secondary */
+}
+
+::-webkit-scrollbar-thumb {
+  background: #ae6f44; /* brand-primary */
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #835834; /* brand-accent */
+}
+
+/* Modal Specific Scrollbar (cleaner look for white modals) */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: #fdf8f0; /* brand-light */
+  border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: #ae6f44; /* brand-primary */
+  border-radius: 4px;
+  border: 2px solid #fdf8f0; /* Creates a padding effect */
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: #835834;
+}
