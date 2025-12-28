@@ -4,17 +4,7 @@ const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const nodemailer = require('nodemailer');
-const dns = require('dns'); // ✅ Import DNS module
 require('dotenv').config(); 
-
-// --- NETWORK FIX: FORCE IPv4 ---
-// This fixes the "ETIMEDOUT" error by preventing Node from trying (and failing) to connect via IPv6
-try {
-    dns.setDefaultResultOrder('ipv4first');
-    console.log("✅ DNS set to prefer IPv4 to fix Gmail timeouts");
-} catch (e) {
-    console.error("⚠️ Could not set DNS order:", e);
-}
 
 // --- SERVER CONFIG ---
 const PORT = process.env.PORT || 8080;
@@ -60,21 +50,29 @@ const pool = mysql.createPool({
     queueLimit: 0
 });
 
-// --- EMAIL CONFIG (IPv4 + GMAIL SERVICE) ---
+// --- EMAIL CONFIG (High Timeout Fix) ---
 if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
     console.error("❌ MISSING EMAIL ENV VARIABLES");
 } else {
     console.log(`✅ Email Env Vars detected. User: ${process.env.EMAIL_USER}`);
 }
 
-// Reverted to 'service: gmail' but with IPv4 forced above.
-// This is usually the most reliable method when DNS is behaving correctly.
+// Using Port 587 (STARTTLS) with aggressive timeouts to prevent premature disconnects
 const transporter = nodemailer.createTransport({
-  service: 'gmail',
+  host: 'smtp.gmail.com',
+  port: 587,
+  secure: false, // Must be false for port 587
   auth: {
     user: process.env.EMAIL_USER, 
     pass: process.env.EMAIL_PASS
   },
+  tls: {
+    rejectUnauthorized: false
+  },
+  // Increase all timeouts to 60 seconds (60000ms)
+  connectionTimeout: 60000, 
+  greetingTimeout: 60000,
+  socketTimeout: 60000,
   logger: true,
   debug: true
 });
@@ -125,7 +123,7 @@ app.post('/api/signup', async (req, res) => {
         const hashedPassword = await bcrypt.hash(password, salt);
         const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
 
-        console.log(`📧 Sending email via Gmail (IPv4)...`);
+        console.log(`📧 Sending email via Port 587 (60s timeout)...`);
         try {
             await transporter.sendMail({
                 from: `"FlourEver Bakery" <${process.env.EMAIL_USER}>`,
