@@ -4,7 +4,17 @@ const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const nodemailer = require('nodemailer');
+const dns = require('dns'); // ✅ Added DNS module
 require('dotenv').config(); 
+
+// --- NETWORK FIX: FORCE IPv4 ---
+// This prevents Node from trying IPv6 which causes timeouts on Render/Gmail
+try {
+    dns.setDefaultResultOrder('ipv4first');
+    console.log("✅ DNS set to prefer IPv4");
+} catch (e) {
+    console.error("⚠️ Could not set DNS order:", e);
+}
 
 // --- SERVER CONFIG ---
 const PORT = process.env.PORT || 8080;
@@ -50,18 +60,19 @@ const pool = mysql.createPool({
     queueLimit: 0
 });
 
-// --- EMAIL CONFIG (High Timeout Fix) ---
+// --- EMAIL CONFIG (IPv4 + Port 465 SSL Fix) ---
 if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
     console.error("❌ MISSING EMAIL ENV VARIABLES");
 } else {
     console.log(`✅ Email Env Vars detected. User: ${process.env.EMAIL_USER}`);
 }
 
-// Using Port 587 (STARTTLS) with aggressive timeouts to prevent premature disconnects
+// Using Port 465 (Secure SSL) combined with IPv4 enforcement
+// This creates an encrypted tunnel immediately, bypassing STARTTLS handshake issues
 const transporter = nodemailer.createTransport({
   host: 'smtp.gmail.com',
-  port: 587,
-  secure: false, // Must be false for port 587
+  port: 465,
+  secure: true, // TRUE for 465
   auth: {
     user: process.env.EMAIL_USER, 
     pass: process.env.EMAIL_PASS
@@ -69,10 +80,9 @@ const transporter = nodemailer.createTransport({
   tls: {
     rejectUnauthorized: false
   },
-  // Increase all timeouts to 60 seconds (60000ms)
-  connectionTimeout: 60000, 
-  greetingTimeout: 60000,
-  socketTimeout: 60000,
+  connectionTimeout: 20000, 
+  greetingTimeout: 20000,
+  socketTimeout: 20000,
   logger: true,
   debug: true
 });
@@ -123,7 +133,7 @@ app.post('/api/signup', async (req, res) => {
         const hashedPassword = await bcrypt.hash(password, salt);
         const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
 
-        console.log(`📧 Sending email via Port 587 (60s timeout)...`);
+        console.log(`📧 Sending email via Port 465 (IPv4)...`);
         try {
             await transporter.sendMail({
                 from: `"FlourEver Bakery" <${process.env.EMAIL_USER}>`,
