@@ -50,16 +50,20 @@ const pool = mysql.createPool({
     queueLimit: 0
 });
 
-// --- EMAIL CONFIG (STRICT) ---
-// Debugging: Check if variables exist (Do not log the actual password!)
+// --- EMAIL CONFIG (UPDATED FOR RENDER) ---
+// Debugging: Check if variables exist
 if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
     console.error("❌ MISSING EMAIL ENV VARIABLES: Please add EMAIL_USER and EMAIL_PASS in Render.");
 } else {
     console.log(`✅ Email Env Vars detected. User: ${process.env.EMAIL_USER}`);
 }
 
+// ⚠️ CHANGED: Switched from 'service: gmail' to explicit SMTP settings
+// This fixes the "ETIMEDOUT" error on Render by forcing a secure SSL connection on port 465.
 const transporter = nodemailer.createTransport({
-  service: 'gmail', 
+  host: 'smtp.gmail.com',
+  port: 465,
+  secure: true, // Use SSL
   auth: {
     user: process.env.EMAIL_USER, 
     pass: process.env.EMAIL_PASS
@@ -125,9 +129,6 @@ app.post('/api/signup', async (req, res) => {
         res.status(500).json({ error: "Server error during signup." });
     }
 });
-
-// ... (Keep your other routes for Login, Verify, etc. exactly as they were) ...
-// (I am omitting the rest to keep this file block clean, but make sure you keep them!)
 
 // 2. VERIFY
 app.post('/api/verify', async (req, res) => {
