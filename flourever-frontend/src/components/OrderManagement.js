@@ -6,7 +6,7 @@ import {
 } from 'react-leaflet';
 import { 
   StarIcon, ExclamationTriangleIcon, 
-  ArrowPathIcon, CheckCircleIcon 
+  ArrowPathIcon
 } from '@heroicons/react/24/solid';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
@@ -31,7 +31,7 @@ const OrderManagement = () => {
   const [updatingOrder, setUpdatingOrder] = useState(null);
   const [expandedOrder, setExpandedOrder] = useState(null);
   
-  const { authFetch } = useAdminAuth();
+  const { authFetch, adminToken } = useAdminAuth();
 
   const statusOptions = ['Pending', 'Baking', 'Out for Delivery', 'Delivered', 'Cancelled', 'Redelivering'];
   const statusColors = {
@@ -44,6 +44,8 @@ const OrderManagement = () => {
   };
 
   const fetchOrders = async () => {
+    if (!adminToken) return;
+
     try {
       setLoading(true);
       const response = await authFetch('/api/admin/orders');
@@ -91,7 +93,7 @@ const OrderManagement = () => {
 
   useEffect(() => {
     fetchOrders();
-  }, []);
+  }, [adminToken]);
 
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -103,7 +105,6 @@ const OrderManagement = () => {
     return new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(price);
   };
 
-  // --- HELPER: RENDER STAR RATING ---
   const renderStars = (rating) => {
     return (
       <div className="flex text-yellow-400">
@@ -114,7 +115,7 @@ const OrderManagement = () => {
     );
   };
 
-  if (loading) {
+  if (loading && !orders.length) {
     return (
       <div className="flex items-center justify-center py-12">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-accent"></div>
@@ -125,8 +126,8 @@ const OrderManagement = () => {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-brand-primary">Order Management</h1>
-        <p className="text-brand-primary/70">Manage and update customer orders</p>
+        <h1 className="text-2xl font-bold text-gray-800">Order Management</h1>
+        <p className="text-gray-500">Manage and update customer orders</p>
       </div>
 
       {error && (
@@ -136,7 +137,7 @@ const OrderManagement = () => {
         </div>
       )}
 
-      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm">
         {orders.length === 0 ? (
           <div className="text-center py-12">
             <h3 className="mt-2 text-sm font-medium text-gray-900">No orders</h3>
@@ -167,7 +168,7 @@ const OrderManagement = () => {
                         <div>
                           <div className="text-sm font-medium text-gray-900">Order #{order.id}</div>
                           <div className="text-sm text-gray-500">{formatDate(order.orderDate)}</div>
-                          <div className="text-xs text-brand-primary mt-1 flex items-center font-bold">
+                          <div className="text-xs text-blue-600 mt-1 flex items-center font-bold">
                             {expandedOrder === order.id ? 'Click to close' : 'View details'}
                           </div>
                         </div>
@@ -177,7 +178,6 @@ const OrderManagement = () => {
                         <div className="text-sm text-gray-500">{order.email}</div>
                       </td>
                       
-                      {/* FEEDBACK COLUMN (New) */}
                       <td className="px-6 py-4 whitespace-nowrap">
                         {order.issue_reported ? (
                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-red-200 text-red-800 animate-pulse">
@@ -204,18 +204,17 @@ const OrderManagement = () => {
                             value={order.orderStatus}
                             onChange={(e) => updateOrderStatus(order.id, e.target.value)}
                             disabled={updatingOrder === order.id}
-                            className="text-sm border border-gray-300 rounded-lg px-3 py-1 focus:outline-none focus:ring-2 focus:ring-brand-accent"
+                            className="text-sm border border-gray-300 rounded-lg px-3 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
                           >
                             {statusOptions.map((status) => (
                               <option key={status} value={status}>{status}</option>
                             ))}
                           </select>
-                          {updatingOrder === order.id && <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-brand-accent"></div>}
+                          {updatingOrder === order.id && <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>}
                         </div>
                       </td>
                     </motion.tr>
                     
-                    {/* --- EXPANDED DETAILS PANEL --- */}
                     <AnimatePresence>
                       {expandedOrder === order.id && (
                         <motion.tr
@@ -225,7 +224,7 @@ const OrderManagement = () => {
                           className="bg-gray-50"
                         >
                           <td colSpan="5" className="px-6 py-4">
-                            {/* --- FEEDBACK & ISSUES SECTION (Only shows if data exists) --- */}
+                            {/* FEEDBACK SECTION */}
                             {(order.rating || order.issue_reported) && (
                               <div className={`mb-6 p-4 rounded-lg border ${order.issue_reported ? 'bg-red-50 border-red-200' : 'bg-green-50 border-green-200'}`}>
                                 {order.issue_reported ? (
@@ -267,10 +266,9 @@ const OrderManagement = () => {
                             )}
 
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                              
-                              {/* LEFT COLUMN: Order Items */}
+                              {/* Order Items */}
                               <div className="bg-white rounded-lg border border-gray-200 p-4 shadow-sm">
-                                <h4 className="font-semibold text-brand-primary mb-3 border-b pb-2">Order Items</h4>
+                                <h4 className="font-semibold text-gray-700 mb-3 border-b pb-2">Order Items</h4>
                                 <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2">
                                   {order.items && order.items.map((item, index) => (
                                     <div key={index} className="flex items-center space-x-3 p-2 hover:bg-gray-50 rounded-lg transition-colors">
@@ -291,20 +289,17 @@ const OrderManagement = () => {
                                 </div>
                                 <div className="mt-4 pt-3 border-t border-gray-100 flex justify-between items-center">
                                   <span className="text-sm text-gray-500">Total Items: {order.items?.length}</span>
-                                  <span className="text-lg font-bold text-brand-primary">{formatPrice(order.totalPrice)}</span>
+                                  <span className="text-lg font-bold text-gray-800">{formatPrice(order.totalPrice)}</span>
                                 </div>
                               </div>
 
-                              {/* RIGHT COLUMN: Delivery Map & Details */}
+                              {/* Delivery Info */}
                               <div className="bg-white rounded-lg border border-gray-200 p-4 shadow-sm flex flex-col">
-                                <h4 className="font-semibold text-brand-primary mb-3 border-b pb-2">Delivery Information</h4>
-                                
+                                <h4 className="font-semibold text-gray-700 mb-3 border-b pb-2">Delivery Information</h4>
                                 <div className="space-y-3 mb-4">
-                                  <div className="flex justify-between">
-                                    <div>
-                                      <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Contact</span>
-                                      <p className="text-gray-800 font-medium">{order.contactNumber}</p>
-                                    </div>
+                                  <div>
+                                    <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Contact</span>
+                                    <p className="text-gray-800 font-medium">{order.contactNumber}</p>
                                   </div>
                                   <div>
                                     <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Address</span>
@@ -318,7 +313,6 @@ const OrderManagement = () => {
                                   )}
                                 </div>
 
-                                {/* THE MAP */}
                                 <div className="flex-1 w-full min-h-[200px] rounded-lg overflow-hidden border border-gray-300 relative z-0">
                                   {order.delivery_lat && order.delivery_lng ? (
                                     <MapContainer 
@@ -344,7 +338,6 @@ const OrderManagement = () => {
                                   )}
                                 </div>
                               </div>
-
                             </div>
                           </td>
                         </motion.tr>

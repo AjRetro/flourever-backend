@@ -11,17 +11,31 @@ const AdminDashboard = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const { logout } = useAdminAuth();
+  const { logout, isLoading, isAdminAuthenticated } = useAdminAuth();
+
+  useEffect(() => {
+    if (!isLoading && !isAdminAuthenticated) {
+      navigate('/admin/login');
+    }
+  }, [isLoading, isAdminAuthenticated, navigate]);
 
   const handleLogout = () => {
     logout();
     navigate('/admin/login');
   };
 
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-500"></div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 flex">
-      {/* Sidebar - Fixed width, no animation */}
-      <div className="fixed inset-y-0 left-0 z-50 w-64 lg:static lg:z-auto">
+      {/* Sidebar */}
+      <div className={`fixed inset-y-0 left-0 z-50 w-64 transform ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:relative lg:translate-x-0 transition-transform duration-200 ease-in-out`}>
         <AdminSidebar 
           isOpen={sidebarOpen} 
           onClose={() => setSidebarOpen(false)}
@@ -30,15 +44,13 @@ const AdminDashboard = () => {
       </div>
       
       {/* Main content */}
-      <div className="flex-1 flex flex-col min-w-0"> {/* Changed from lg:pl-64 to min-w-0 */}
-        {/* Header */}
+      <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
         <AdminHeader 
           onMenuClick={() => setSidebarOpen(true)}
           onLogout={handleLogout}
         />
         
-        {/* Main content area - NO WRAPPERS, NO ANIMATIONS */}
-        <main className="flex-1 p-6">
+        <main className="flex-1 overflow-y-auto p-6">
           <Routes>
             <Route path="/" element={<DashboardOverview />} />
             <Route path="/products" element={<ProductManagement />} />
@@ -55,10 +67,13 @@ const AdminDashboard = () => {
 const DashboardOverview = () => {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
-  const { authFetch } = useAdminAuth();
+  const { authFetch, adminToken } = useAdminAuth();
 
   const fetchStats = async () => {
+    if (!adminToken) return; 
+    
     try {
+      // ✅ Using the authFetch helper which already has the Base URL
       const response = await authFetch('/api/admin/dashboard/stats');
       if (response.ok) {
         const statsData = await response.json();
@@ -73,38 +88,38 @@ const DashboardOverview = () => {
 
   useEffect(() => {
     fetchStats();
-  }, []);
+  }, [adminToken]);
 
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-accent"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-pink-500"></div>
       </div>
     );
   }
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-brand-primary mb-6">Admin Dashboard</h1>
+      <h1 className="text-2xl font-bold text-gray-800 mb-6">Admin Dashboard</h1>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <div className="bg-brand-light p-6 rounded-lg border border-brand-primary/10">
-          <h3 className="text-lg font-semibold text-brand-primary/70">Total Products</h3>
-          <p className="text-3xl font-bold text-brand-accent">{stats?.totalProducts || 0}</p>
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
+          <h3 className="text-lg font-semibold text-gray-500">Total Products</h3>
+          <p className="text-3xl font-bold text-blue-600">{stats?.totalProducts || 0}</p>
         </div>
-        <div className="bg-brand-light p-6 rounded-lg border border-brand-primary/10">
-          <h3 className="text-lg font-semibold text-brand-primary/70">Pending Orders</h3>
-          <p className="text-3xl font-bold text-brand-accent">{stats?.pendingOrders || 0}</p>
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
+          <h3 className="text-lg font-semibold text-gray-500">Pending Orders</h3>
+          <p className="text-3xl font-bold text-orange-500">{stats?.pendingOrders || 0}</p>
         </div>
-        <div className="bg-brand-light p-6 rounded-lg border border-brand-primary/10">
-          <h3 className="text-lg font-semibold text-brand-primary/70">Total Users</h3>
-          <p className="text-3xl font-bold text-brand-accent">{stats?.totalUsers || 0}</p>
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
+          <h3 className="text-lg font-semibold text-gray-500">Total Users</h3>
+          <p className="text-3xl font-bold text-purple-600">{stats?.totalUsers || 0}</p>
         </div>
-        <div className="bg-brand-light p-6 rounded-lg border border-brand-primary/10">
-          <h3 className="text-lg font-semibold text-brand-primary/70">Total Orders</h3>
-          <p className="text-3xl font-bold text-brand-accent">{stats?.totalOrders || 0}</p>
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
+          <h3 className="text-lg font-semibold text-gray-500">Total Orders</h3>
+          <p className="text-3xl font-bold text-green-600">{stats?.totalOrders || 0}</p>
         </div>
       </div>
-      <p className="text-brand-primary/70">Select a section from the sidebar to manage your bakery.</p>
+      <p className="text-gray-500">Select a section from the sidebar to manage your bakery.</p>
     </div>
   );
 };
