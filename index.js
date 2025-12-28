@@ -4,23 +4,29 @@ const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const nodemailer = require('nodemailer');
-const dns = require('dns'); // ✅ Added DNS module
+const dns = require('dns'); 
 require('dotenv').config(); 
-
-// --- NETWORK FIX: FORCE IPv4 ---
-// This prevents Node from trying IPv6 which causes timeouts on Render/Gmail
-try {
-    dns.setDefaultResultOrder('ipv4first');
-    console.log("✅ DNS set to prefer IPv4");
-} catch (e) {
-    console.error("⚠️ Could not set DNS order:", e);
-}
 
 // --- SERVER CONFIG ---
 const PORT = process.env.PORT || 8080;
 const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-key-12345';
 
 const app = express();
+
+// --- 1. NETWORK DIAGNOSTICS (Run on Start) ---
+// This will tell us in the logs exactly what IP we are trying to hit
+try {
+    dns.setDefaultResultOrder('ipv4first');
+    console.log("✅ DNS set to prefer IPv4");
+    
+    // Look up Gmail's IP to prove we are finding the right one
+    dns.lookup('smtp.gmail.com', (err, address, family) => {
+        if(err) console.error("❌ DNS Lookup Failed:", err);
+        else console.log(`🔍 DNS Lookup Successful: smtp.gmail.com -> ${address} (IPv${family})`);
+    });
+} catch (e) {
+    console.error("⚠️ Could not set DNS order:", e);
+}
 
 // --- CORS FIX ---
 app.use(cors({
@@ -60,19 +66,17 @@ const pool = mysql.createPool({
     queueLimit: 0
 });
 
-// --- EMAIL CONFIG (IPv4 + Port 465 SSL Fix) ---
+// --- EMAIL CONFIG (Port 587 Standard) ---
 if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
     console.error("❌ MISSING EMAIL ENV VARIABLES");
 } else {
     console.log(`✅ Email Env Vars detected. User: ${process.env.EMAIL_USER}`);
 }
 
-// Using Port 465 (Secure SSL) combined with IPv4 enforcement
-// This creates an encrypted tunnel immediately, bypassing STARTTLS handshake issues
 const transporter = nodemailer.createTransport({
   host: 'smtp.gmail.com',
-  port: 465,
-  secure: true, // TRUE for 465
+  port: 587,
+  secure: false, // Must be false for 587 (STARTTLS)
   auth: {
     user: process.env.EMAIL_USER, 
     pass: process.env.EMAIL_PASS
@@ -80,9 +84,10 @@ const transporter = nodemailer.createTransport({
   tls: {
     rejectUnauthorized: false
   },
-  connectionTimeout: 20000, 
-  greetingTimeout: 20000,
-  socketTimeout: 20000,
+  // Aggressive timeouts
+  connectionTimeout: 30000, 
+  greetingTimeout: 30000,
+  socketTimeout: 30000,
   logger: true,
   debug: true
 });
@@ -133,7 +138,7 @@ app.post('/api/signup', async (req, res) => {
         const hashedPassword = await bcrypt.hash(password, salt);
         const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
 
-        console.log(`📧 Sending email via Port 465 (IPv4)...`);
+        console.log(`📧 Sending email via Port 587...`);
         try {
             await transporter.sendMail({
                 from: `"FlourEver Bakery" <${process.env.EMAIL_USER}>`,
