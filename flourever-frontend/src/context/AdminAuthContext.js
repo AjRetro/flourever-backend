@@ -16,7 +16,7 @@ export const AdminAuthProvider = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
 
   // Define the Base URL once so we don't make mistakes
-  const BASE_URL = 'https://flourever-backend.onrender.com'; 
+  const BASE_URL = 'https://flourever-api.onrender.com'; 
 
   useEffect(() => {
     const token = localStorage.getItem('adminToken');
