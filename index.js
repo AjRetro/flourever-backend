@@ -4,7 +4,7 @@ const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const nodemailer = require('nodemailer');
-const dns = require('dns'); 
+// Removed 'dns' module as we are fixing it directly in the transporter now
 require('dotenv').config(); 
 
 // --- SERVER CONFIG ---
@@ -12,21 +12,6 @@ const PORT = process.env.PORT || 8080;
 const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-key-12345';
 
 const app = express();
-
-// --- 1. NETWORK DIAGNOSTICS (Run on Start) ---
-// This will tell us in the logs exactly what IP we are trying to hit
-try {
-    dns.setDefaultResultOrder('ipv4first');
-    console.log("✅ DNS set to prefer IPv4");
-    
-    // Look up Gmail's IP to prove we are finding the right one
-    dns.lookup('smtp.gmail.com', (err, address, family) => {
-        if(err) console.error("❌ DNS Lookup Failed:", err);
-        else console.log(`🔍 DNS Lookup Successful: smtp.gmail.com -> ${address} (IPv${family})`);
-    });
-} catch (e) {
-    console.error("⚠️ Could not set DNS order:", e);
-}
 
 // --- CORS FIX ---
 app.use(cors({
@@ -66,7 +51,7 @@ const pool = mysql.createPool({
     queueLimit: 0
 });
 
-// --- EMAIL CONFIG (Port 587 Standard) ---
+// --- EMAIL CONFIG (IPv4 SOCKET ENFORCEMENT) ---
 if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
     console.error("❌ MISSING EMAIL ENV VARIABLES");
 } else {
@@ -75,19 +60,15 @@ if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
 
 const transporter = nodemailer.createTransport({
   host: 'smtp.gmail.com',
-  port: 587,
-  secure: false, // Must be false for 587 (STARTTLS)
+  port: 465,
+  secure: true, // Use SSL
   auth: {
     user: process.env.EMAIL_USER, 
     pass: process.env.EMAIL_PASS
   },
-  tls: {
-    rejectUnauthorized: false
-  },
-  // Aggressive timeouts
-  connectionTimeout: 30000, 
-  greetingTimeout: 30000,
-  socketTimeout: 30000,
+  // ⚠️ CRITICAL FIX: This forces the internal socket to use IPv4 only.
+  // This bypasses the IPv6 connection timeouts common on Render.
+  family: 4, 
   logger: true,
   debug: true
 });
@@ -138,7 +119,7 @@ app.post('/api/signup', async (req, res) => {
         const hashedPassword = await bcrypt.hash(password, salt);
         const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
 
-        console.log(`📧 Sending email via Port 587...`);
+        console.log(`📧 Sending email via Port 465 (Forced IPv4)...`);
         try {
             await transporter.sendMail({
                 from: `"FlourEver Bakery" <${process.env.EMAIL_USER}>`,
