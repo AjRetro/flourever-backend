@@ -50,23 +50,29 @@ const pool = mysql.createPool({
     queueLimit: 0
 });
 
-// --- EMAIL CONFIG (SERVICE: GMAIL FIX) ---
+// --- EMAIL CONFIG (TIMEOUT FIX) ---
 if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
     console.error("❌ MISSING EMAIL ENV VARIABLES");
 } else {
     console.log(`✅ Email Env Vars detected. User: ${process.env.EMAIL_USER}`);
 }
 
-// ⚠️ FIXED: Using 'service: gmail' with debug logs. 
-// This handles port 465/587 automatically and is more robust for Gmail.
+// ⚠️ FIXED: Using Port 587 with increased timeouts.
+// ETIMEDOUT usually means the server is too slow to respond within the default 2s.
 const transporter = nodemailer.createTransport({
-  service: 'gmail',
+  host: 'smtp.gmail.com',
+  port: 587,
+  secure: false, // true for 465, false for other ports
   auth: {
     user: process.env.EMAIL_USER, 
     pass: process.env.EMAIL_PASS
   },
-  logger: true, // Prints SMTP traffic to logs
-  debug: true   // Details for debugging
+  // Increase timeouts to handle cloud network latency
+  connectionTimeout: 15000, // 15 seconds
+  greetingTimeout: 15000,
+  socketTimeout: 15000,
+  logger: true,
+  debug: true
 });
 
 // Verify Email Connection on Startup
@@ -115,7 +121,7 @@ app.post('/api/signup', async (req, res) => {
         const hashedPassword = await bcrypt.hash(password, salt);
         const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
 
-        console.log(`📧 Sending email via Gmail Service...`);
+        console.log(`📧 Sending email via Port 587 (with 15s timeout)...`);
         try {
             await transporter.sendMail({
                 from: `"FlourEver Bakery" <${process.env.EMAIL_USER}>`,
