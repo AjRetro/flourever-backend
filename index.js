@@ -51,7 +51,13 @@ const pool = mysql.createPool({
 });
 
 // --- EMAIL CONFIG (STRICT) ---
-// We removed the hardcoded password. It MUST use the environment variable now.
+// Debugging: Check if variables exist (Do not log the actual password!)
+if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+    console.error("❌ MISSING EMAIL ENV VARIABLES: Please add EMAIL_USER and EMAIL_PASS in Render.");
+} else {
+    console.log(`✅ Email Env Vars detected. User: ${process.env.EMAIL_USER}`);
+}
+
 const transporter = nodemailer.createTransport({
   service: 'gmail', 
   auth: {
