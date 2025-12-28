@@ -50,22 +50,23 @@ const pool = mysql.createPool({
     queueLimit: 0
 });
 
-// --- EMAIL CONFIG (PORT 587 FIX) ---
+// --- EMAIL CONFIG (SERVICE: GMAIL FIX) ---
 if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
     console.error("❌ MISSING EMAIL ENV VARIABLES");
 } else {
     console.log(`✅ Email Env Vars detected. User: ${process.env.EMAIL_USER}`);
 }
 
-// ⚠️ FIXED: Switched to Port 587 (STARTTLS) to prevent timeouts
+// ⚠️ FIXED: Using 'service: gmail' with debug logs. 
+// This handles port 465/587 automatically and is more robust for Gmail.
 const transporter = nodemailer.createTransport({
-  host: 'smtp.gmail.com',
-  port: 587,
-  secure: false, // Must be false for port 587
+  service: 'gmail',
   auth: {
     user: process.env.EMAIL_USER, 
     pass: process.env.EMAIL_PASS
-  }
+  },
+  logger: true, // Prints SMTP traffic to logs
+  debug: true   // Details for debugging
 });
 
 // Verify Email Connection on Startup
@@ -114,7 +115,7 @@ app.post('/api/signup', async (req, res) => {
         const hashedPassword = await bcrypt.hash(password, salt);
         const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
 
-        console.log(`📧 Sending email via Port 587...`);
+        console.log(`📧 Sending email via Gmail Service...`);
         try {
             await transporter.sendMail({
                 from: `"FlourEver Bakery" <${process.env.EMAIL_USER}>`,
