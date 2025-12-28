@@ -4,7 +4,17 @@ const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const nodemailer = require('nodemailer');
+const dns = require('dns'); // ✅ Import DNS module
 require('dotenv').config(); 
+
+// --- NETWORK FIX: FORCE IPv4 ---
+// This fixes the "ETIMEDOUT" error by preventing Node from trying (and failing) to connect via IPv6
+try {
+    dns.setDefaultResultOrder('ipv4first');
+    console.log("✅ DNS set to prefer IPv4 to fix Gmail timeouts");
+} catch (e) {
+    console.error("⚠️ Could not set DNS order:", e);
+}
 
 // --- SERVER CONFIG ---
 const PORT = process.env.PORT || 8080;
@@ -50,27 +60,21 @@ const pool = mysql.createPool({
     queueLimit: 0
 });
 
-// --- EMAIL CONFIG (TIMEOUT FIX) ---
+// --- EMAIL CONFIG (IPv4 + GMAIL SERVICE) ---
 if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
     console.error("❌ MISSING EMAIL ENV VARIABLES");
 } else {
     console.log(`✅ Email Env Vars detected. User: ${process.env.EMAIL_USER}`);
 }
 
-// ⚠️ FIXED: Using Port 587 with increased timeouts.
-// ETIMEDOUT usually means the server is too slow to respond within the default 2s.
+// Reverted to 'service: gmail' but with IPv4 forced above.
+// This is usually the most reliable method when DNS is behaving correctly.
 const transporter = nodemailer.createTransport({
-  host: 'smtp.gmail.com',
-  port: 587,
-  secure: false, // true for 465, false for other ports
+  service: 'gmail',
   auth: {
     user: process.env.EMAIL_USER, 
     pass: process.env.EMAIL_PASS
   },
-  // Increase timeouts to handle cloud network latency
-  connectionTimeout: 15000, // 15 seconds
-  greetingTimeout: 15000,
-  socketTimeout: 15000,
   logger: true,
   debug: true
 });
@@ -121,7 +125,7 @@ app.post('/api/signup', async (req, res) => {
         const hashedPassword = await bcrypt.hash(password, salt);
         const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
 
-        console.log(`📧 Sending email via Port 587 (with 15s timeout)...`);
+        console.log(`📧 Sending email via Gmail (IPv4)...`);
         try {
             await transporter.sendMail({
                 from: `"FlourEver Bakery" <${process.env.EMAIL_USER}>`,
